@@ -1,4 +1,6 @@
 using System.Net.Mime;
+using Jellyfin.Plugin.ThemeSongs.Provider;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Library;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -25,9 +27,12 @@ namespace Jellyfin.Plugin.ThemeSongs.Api
 
         public ThemeSongsController(
             ILibraryManager libraryManager,
-            ILogger<ThemeSongsManager> logger)
+            ILogger<ThemeSongsManager> logger,
+            PlexProvider plexProvider,
+            TelevisionTunesProvider televisionTunesProvider,
+            IServerApplicationPaths serverApplicationPaths)
         {
-            _themeSongsManager = new ThemeSongsManager(libraryManager,  logger);
+            _themeSongsManager = new ThemeSongsManager(libraryManager, logger, serverApplicationPaths, plexProvider, televisionTunesProvider);
             _logger = logger;
         }
 

@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Jellyfin.Plugin.ThemeSongs.Provider;
+using MediaBrowser.Controller;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
@@ -13,10 +15,10 @@ namespace Jellyfin.Plugin.ThemeSongs.ScheduledTasks
         private readonly ILogger<ThemeSongsManager> _logger;
         private readonly ThemeSongsManager _themeSongsManager;
 
-        public DownloadThemeSongsTask(ILibraryManager libraryManager, ILogger<ThemeSongsManager> logger)
+        public DownloadThemeSongsTask(ILibraryManager libraryManager, ILogger<ThemeSongsManager> logger, IServerApplicationPaths serverApplicationPaths, PlexProvider plexProvider, TelevisionTunesProvider televisionTunesProvider)
         {
             _logger = logger;
-            _themeSongsManager = new ThemeSongsManager(libraryManager,  logger);
+            _themeSongsManager = new ThemeSongsManager(libraryManager,  logger, serverApplicationPaths, plexProvider, televisionTunesProvider);
         }
         public Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
