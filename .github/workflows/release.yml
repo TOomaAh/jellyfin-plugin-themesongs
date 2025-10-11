@@ -46,26 +46,27 @@ jobs:
         echo "CHECKSUM=${CHECKSUM}"
         echo "CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
 
-    - name: Check if tag exists
+    - name: Check if tag exists remotely
       id: check_tag
       run: |
-        if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
+        if git ls-remote --tags origin | grep -q "refs/tags/v${{ env.VERSION }}"; then
           echo "TAG_EXISTS=true" >> $GITHUB_ENV
         else
           echo "TAG_EXISTS=false" >> $GITHUB_ENV
         fi
 
-    - name: Create release with tag
+    - name: Create tag if needed
+      if: env.TAG_EXISTS == 'false'
       run: |
-        if [ "${{ env.TAG_EXISTS }}" = "true" ]; then
-          # Tag exists, just create release
-          gh release create "v${{ env.VERSION }}" "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" --title "v${{ env.VERSION }}" --generate-notes
-        else
-          # Tag doesn't exist, create tag first
-          git tag "v${{ env.VERSION }}"
-          git push origin "v${{ env.VERSION }}"
-          gh release create "v${{ env.VERSION }}" "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" --title "v${{ env.VERSION }}" --generate-notes
-        fi
+        git tag "v${{ env.VERSION }}"
+        git push origin "v${{ env.VERSION }}"
+
+    - name: Wait for tag to be available
+      if: env.TAG_EXISTS == 'false'
+      run: sleep 2
+
+    - name: Create release
+      run: gh release create "v${{ env.VERSION }}" "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" --title "v${{ env.VERSION }}" --generate-notes
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
