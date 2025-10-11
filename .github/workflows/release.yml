@@ -1,0 +1,219 @@
+name: 'Release'
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Is this a pre-release?'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Get version
+      id: get_version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+        else
+          echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Generate changelog
+      id: changelog
+      run: |
+        # Generate changelog from git commits
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD~1 2>/dev/null || echo "")
+        if [ -n "$PREVIOUS_TAG" ]; then
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" $PREVIOUS_TAG..HEAD)
+        else
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --max-count=10)
+        fi
+
+        echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+        echo "## Changes" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: Jellyfin Theme Songs Plugin v${{ steps.get_version.outputs.version }}
+        body: |
+          # Jellyfin Theme Songs Plugin v${{ steps.get_version.outputs.version }}
+
+          ${{ steps.changelog.outputs.CHANGELOG }}
+
+          ## Installation
+
+          1. Download the `jellyfin-plugin-themesongs-${{ steps.get_version.outputs.version }}.zip` file
+          2. Extract the contents to your Jellyfin plugins directory
+          3. Restart Jellyfin
+          4. Configure the plugin in the Dashboard > Plugins > Theme Songs
+
+          ## Requirements
+
+          - Jellyfin 10.10.0 or higher
+          - .NET 8.0 runtime
+          - FFmpeg (for audio normalization)
+
+          ## Support
+
+          If you encounter any issues, please report them on the [Issues page](https://github.com/your-username/jellyfin-plugin-themesongs/issues).
+        draft: false
+        prerelease: ${{ github.event.inputs.prerelease || false }}
+
+  build-release:
+    needs: create-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        include:
+          - os: ubuntu-latest
+            artifact-name: linux-x64
+          - os: windows-latest
+            artifact-name: win-x64
+          - os: macos-latest
+            artifact-name: osx-x64
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Update version in project file
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          sed -i.bak "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${VERSION}.0<\/AssemblyVersion>/" Jellyfin.Plugin.ThemeSongs/Jellyfin.Plugin.ThemeSongs.csproj
+          sed -i.bak "s/<FileVersion>.*<\/FileVersion>/<FileVersion>${VERSION}.0<\/FileVersion>/" Jellyfin.Plugin.ThemeSongs/Jellyfin.Plugin.ThemeSongs.csproj
+        else
+          sed -i "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${VERSION}.0<\/AssemblyVersion>/" Jellyfin.Plugin.ThemeSongs/Jellyfin.Plugin.ThemeSongs.csproj
+          sed -i "s/<FileVersion>.*<\/FileVersion>/<FileVersion>${VERSION}.0<\/FileVersion>/" Jellyfin.Plugin.ThemeSongs/Jellyfin.Plugin.ThemeSongs.csproj
+        fi
+      shell: bash
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Test
+      run: dotnet test --configuration Release --no-build
+
+    - name: Publish
+      run: dotnet publish --configuration Release --no-build --output ./release
+
+    - name: Create artifact directory
+      run: |
+        mkdir -p ./artifacts
+        cp -r ./release/* ./artifacts/
+
+    - name: Create platform-specific archive
+      run: |
+        cd artifacts
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          7z a ../jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}-${{ matrix.artifact-name }}.zip .
+        else
+          zip -r ../jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}-${{ matrix.artifact-name }}.zip .
+        fi
+        cd ..
+      shell: bash
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}-${{ matrix.artifact-name }}.zip
+        asset_name: jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}-${{ matrix.artifact-name }}.zip
+        asset_content_type: application/zip
+
+  create-universal-package:
+    needs: [create-release, build-release]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Update version in project file
+      run: |
+        VERSION="${{ needs.create-release.outputs.version }}"
+        sed -i "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>${VERSION}.0<\/AssemblyVersion>/" Jellyfin.Plugin.ThemeSongs/Jellyfin.Plugin.ThemeSongs.csproj
+        sed -i "s/<FileVersion>.*<\/FileVersion>/<FileVersion>${VERSION}.0<\/FileVersion>/" Jellyfin.Plugin.ThemeSongs/Jellyfin.Plugin.ThemeSongs.csproj
+
+    - name: Build universal package
+      run: |
+        dotnet restore
+        dotnet build --configuration Release
+        dotnet publish --configuration Release --output ./universal
+
+    - name: Create universal ZIP
+      run: |
+        cd universal
+        zip -r ../jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}.zip .
+        cd ..
+
+    - name: Upload Universal Package
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: ./jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}.zip
+        asset_name: jellyfin-plugin-themesongs-${{ needs.create-release.outputs.version }}.zip
+        asset_content_type: application/zip
+
+  notify-release:
+    needs: [create-release, create-universal-package]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+    - name: Notify success
+      if: needs.create-universal-package.result == 'success'
+      run: |
+        echo "✅ Release v${{ needs.create-release.outputs.version }} created successfully!"
+        echo "📦 Universal package and platform-specific packages are available."
+
+    - name: Notify failure
+      if: needs.create-universal-package.result == 'failure'
+      run: |
+        echo "❌ Release creation failed!"
+        exit 1

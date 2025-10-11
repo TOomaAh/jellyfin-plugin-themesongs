@@ -1,59 +1,85 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Net;
-using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities.TV;
 using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Collections.Generic;
+using Jellyfin.Plugin.ThemeSongs.Services;
 
-namespace Jellyfin.Plugin.ThemeSongs.Provider
+namespace Jellyfin.Plugin.ThemeSongs.Providers
 {
-    public class TelevisionTunesProvider(ILogger<TelevisionTunesProvider> logger) : IProvider
+    public class TelevisionTunesProvider : IThemeSongProvider
     {
-        private readonly ILogger<TelevisionTunesProvider> _logger = logger;
+        private readonly IHttpClientService _httpClientService;
+        private readonly ILogger<TelevisionTunesProvider> _logger;
         private static readonly CultureInfo UsCulture = new("en-US");
-        private static readonly string _baseUrl = "http://televisiontunes.com";
+        private const string BaseUrl = "http://televisiontunes.com";
 
-        public async Task<string> GetURL(Series item, CancellationToken cancellationToken)
+        public TelevisionTunesProvider(IHttpClientService httpClientService, ILogger<TelevisionTunesProvider> logger)
         {
-            _logger.LogInformation("Recovering URL for {name}", item.Name);
-            // Extract the first letter of the title to determine the section
-            string section = GetSearchTitle(item.Name).Substring(0, 1);
-            if (int.TryParse(section, NumberStyles.Integer, UsCulture, out _))
+            _httpClientService = httpClientService ?? throw new ArgumentNullException(nameof(httpClientService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public string Name => "TelevisionTunes";
+        public int Priority => Plugin.Instance?.Configuration?.TelevisionTunesProviderPriority ?? 2;
+
+        public async Task<string> GetThemeSongUrlAsync(Series series, CancellationToken cancellationToken = default)
+        {
+            if (series == null)
             {
-                section = "numbers";
+                throw new ArgumentNullException(nameof(series));
             }
 
-            // Construit l'URL pour la section
-            string url = $"${_baseUrl}/{section}-theme-songs.html";
-            
-            // Récupère le contenu HTML de la page
-            string html = await GetHtmlContent(url, cancellationToken);
-            if (html == null)
+            _logger.LogDebug("Searching for theme song for {SeriesName} on TelevisionTunes", series.Name);
+
+            try
             {
-                _logger.LogWarning("Échec de récupération du HTML pour {0}", url);
+                // Extract the first letter of the title to determine the section
+                string section = GetSearchTitle(series.Name).Substring(0, 1);
+                if (int.TryParse(section, NumberStyles.Integer, UsCulture, out _))
+                {
+                    section = "numbers";
+                }
+
+                // Build the URL for the section
+                string url = $"{BaseUrl}/{section}-theme-songs.html";
+
+                // Get HTML content from the page
+                string html = await _httpClientService.GetStringAsync(url, cancellationToken);
+                if (string.IsNullOrEmpty(html))
+                {
+                    _logger.LogWarning("Failed to retrieve HTML content for {Url}", url);
+                    return null;
+                }
+
+                // Find matching series in the HTML
+                Match match = FindSeriesMatch(html, series.Name);
+                if (match.Success)
+                {
+                    string seriesUrl = $"{BaseUrl}/" + match.Groups["url"].Value;
+                    string themeUrl = await GetThemeSongFromPageAsync(seriesUrl, cancellationToken);
+
+                    if (!string.IsNullOrEmpty(themeUrl))
+                    {
+                        _logger.LogInformation("Found theme song for {SeriesName} on TelevisionTunes", series.Name);
+                        return themeUrl;
+                    }
+                }
+
+                _logger.LogDebug("No theme song found for {SeriesName} on TelevisionTunes", series.Name);
                 return null;
             }
-
-            // ecrire le contenu HTML dans un fichier pour le débogage
-            string filePath = Path.Combine(Path.GetTempPath(), "televisiontunes.html");
-            File.WriteAllText(filePath, html);
-
-            // Recherche correspondante pour trouver l'URL de la série
-            Match match = FindSeriesMatch(html, item.Name);
-            if (match.Success)
+            catch (Exception ex)
             {
-                string seriesUrl = $"{_baseUrl}/" + match.Groups["url"].Value;
-                string themeUrl = await GetThemeSongFromPage(seriesUrl, cancellationToken);
-                return themeUrl;
+                _logger.LogError(ex, "Error searching for theme song for {SeriesName} on TelevisionTunes", series.Name);
+                return null;
             }
-
-            return null;
         }
 
         private Match FindSeriesMatch(string html, string seriesName)
@@ -121,46 +147,21 @@ namespace Jellyfin.Plugin.ThemeSongs.Provider
             return Match.Empty;
         }
 
-        private async Task<string> GetThemeSongFromPage(string url, CancellationToken cancellationToken)
+        private async Task<string> GetThemeSongFromPageAsync(string url, CancellationToken cancellationToken)
         {
-            string html = await GetHtmlContent(url, cancellationToken);
-            if (html == null)
+            string html = await _httpClientService.GetStringAsync(url, cancellationToken);
+            if (string.IsNullOrEmpty(html))
                 return null;
 
             Match matchCollection = Regex.Match(html, "televisiontunes.com/uploads/audio/(?<themesong>.*?).mp3", RegexOptions.IgnoreCase);
             if (!matchCollection.Success)
                 return null;
 
-            string themeUrl = $"{_baseUrl}/uploads/audio/" +
+            string themeUrl = $"{BaseUrl}/uploads/audio/" +
                 WebUtility.HtmlDecode(matchCollection.Groups["themesong"].Value) + ".mp3";
 
-            _logger.LogInformation("Theme Song Found: {0}", themeUrl);
+            _logger.LogDebug("Theme Song Found: {ThemeUrl}", themeUrl);
             return themeUrl;
-        }
-
-        private async Task<string> GetHtmlContent(string url, CancellationToken cancellationToken)
-        {
-            try
-            {
-                HttpClientHandler handler = new()
-                {
-                    ServerCertificateCustomValidationCallback = (_, _, _, _) => true
-                };
-
-                using HttpClient client = new(handler);
-                client.DefaultRequestHeaders.Add("User-Agent", "Jellyfin/10.0");
-                HttpResponseMessage response = await client.GetAsync(url, cancellationToken);
-                if (response.IsSuccessStatusCode)
-                {
-                    return await response.Content.ReadAsStringAsync(cancellationToken);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Cannot get html content {ex}", ex);
-            }
-
-            return null;
         }
 
         private static string GetSearchTitle(string name)

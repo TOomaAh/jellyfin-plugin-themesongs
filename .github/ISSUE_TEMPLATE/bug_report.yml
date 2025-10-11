@@ -1,0 +1,121 @@
+name: 🐛 Bug Report
+description: Report a bug to help us improve the plugin
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below with as much detail as possible.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues to ensure this isn't a duplicate
+          required: true
+        - label: I have read the troubleshooting guide
+          required: true
+
+  - type: input
+    id: jellyfin-version
+    attributes:
+      label: Jellyfin Version
+      description: What version of Jellyfin are you running?
+      placeholder: "e.g., 10.10.0"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin Version
+      description: What version of the Theme Songs plugin are you using?
+      placeholder: "e.g., 1.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating System
+      description: What operating system is Jellyfin running on?
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - Docker
+        - Other (please specify)
+    validations:
+      required: true
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is
+      placeholder: Describe the bug...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Please provide detailed steps to reproduce the issue
+      placeholder: |
+        1. Go to...
+        2. Click on...
+        3. See error...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: A clear description of what you expected to happen
+      placeholder: What should have happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual Behavior
+      description: A clear description of what actually happened
+      placeholder: What actually happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Log Output
+      description: Please copy and paste any relevant log output (from Jellyfin logs)
+      render: shell
+      placeholder: Paste log output here...
+
+  - type: textarea
+    id: configuration
+    attributes:
+      label: Plugin Configuration
+      description: Please share your plugin configuration (remove any sensitive information)
+      render: json
+      placeholder: |
+        {
+          "NormalizeAudio": true,
+          "NormalizeAudioVolume": -15,
+          "EnablePlexProvider": true,
+          "EnableTelevisionTunesProvider": true,
+          "PlexProviderPriority": 1,
+          "TelevisionTunesProviderPriority": 2
+        }
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (screenshots, network setup, etc.)
+      placeholder: Any additional information that might be helpful...
