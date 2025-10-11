@@ -2,9 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Plugin.ThemeSongs.Provider;
-using MediaBrowser.Controller;
-using MediaBrowser.Controller.Library;
+using Jellyfin.Plugin.ThemeSongs.Services;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 
@@ -12,20 +10,33 @@ namespace Jellyfin.Plugin.ThemeSongs.ScheduledTasks
 {
     public class DownloadThemeSongsTask : IScheduledTask
     {
-        private readonly ILogger<ThemeSongsManager> _logger;
-        private readonly ThemeSongsManager _themeSongsManager;
+        private readonly IThemeSongDownloadService _downloadService;
+        private readonly ILogger<DownloadThemeSongsTask> _logger;
 
-        public DownloadThemeSongsTask(ILibraryManager libraryManager, ILogger<ThemeSongsManager> logger, IServerApplicationPaths serverApplicationPaths, PlexProvider plexProvider, TelevisionTunesProvider televisionTunesProvider)
+        public DownloadThemeSongsTask(IThemeSongDownloadService downloadService, ILogger<DownloadThemeSongsTask> logger)
         {
-            _logger = logger;
-            _themeSongsManager = new ThemeSongsManager(libraryManager,  logger, serverApplicationPaths, plexProvider, televisionTunesProvider);
+            _downloadService = downloadService ?? throw new ArgumentNullException(nameof(downloadService));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-        public Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
+
+        public async Task Execute(CancellationToken cancellationToken, IProgress<double> progress)
         {
-            _logger.LogInformation("Starting plugin, Downloading TV Theme Songs...");
-            _themeSongsManager.DownloadAllThemeSongs();
-            _logger.LogInformation("All theme songs downloaded");
-            return Task.CompletedTask;
+            _logger.LogInformation("Starting scheduled theme songs download task");
+
+            try
+            {
+                await _downloadService.DownloadAllThemeSongsAsync(cancellationToken);
+                _logger.LogInformation("Scheduled theme songs download task completed successfully");
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("Scheduled theme songs download task was cancelled");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred during scheduled theme songs download task");
+                throw;
+            }
         }
 
         public Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)

@@ -17,7 +17,7 @@
                         <br />
                     </div>
                     <div class="sectionTitleContainer flex align-items-center">
-                        <h2 class="sectionTitle">Theme Songs</h2>
+                        <h2 class="sectionTitle">Audio Settings</h2>
                         <a is="emby-linkbutton" class="raised button-alt headerHelpButton emby-button" target="_blank"
                             href="https://github.com/danieladov/jellyfin-plugin-themesongs">Help</a>
                     </div>
@@ -31,6 +31,39 @@
                             Normalize Audio Volume (dB)
                         </div>
                     </label>
+
+                    <div class="sectionTitleContainer">
+                        <h2 class="sectionTitle">Theme Song Providers</h2>
+                    </div>
+                    <div class="fieldDescription">
+                        Configure which providers to use for downloading theme songs and their priority order.
+                    </div>
+
+                    <div class="verticalSection">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enablePlexProvider" />
+                            <span>Enable Plex Provider</span>
+                        </label>
+                        <label class="inputContainer">
+                            <input is="emby-input" type="number" id="plexProviderPriority" min="1" max="10" step="1" />
+                            <div class="fieldDescription">
+                                Plex Provider Priority (1 = highest priority)
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="verticalSection">
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="enableTelevisionTunesProvider" />
+                            <span>Enable TelevisionTunes Provider</span>
+                        </label>
+                        <label class="inputContainer">
+                            <input is="emby-input" type="number" id="televisionTunesProviderPriority" min="1" max="10" step="1" />
+                            <div class="fieldDescription">
+                                TelevisionTunes Provider Priority (1 = highest priority)
+                            </div>
+                        </label>
+                    </div>
                     <button is="emby-button" type="submit" data-theme="b" class="raised button-submit block">
                         <span>Save</span>
                     </button>
@@ -50,24 +83,47 @@
                 loadConfiguration: function () {
                     Dashboard.showLoadingMsg();
                     ApiClient.getPluginConfiguration(ThemeSongPluginConfiguration.uniquePluginId).then(function (config) {
+                        // Audio settings
                         document.getElementById("normalizeAudio").checked = config.NormalizeAudio || false;
                         document.getElementById("normalizeAudioVolume").value = config.NormalizeAudioVolume || -15;
+
+                        // Provider settings
+                        document.getElementById("enablePlexProvider").checked = config.EnablePlexProvider !== false;
+                        document.getElementById("enableTelevisionTunesProvider").checked = config.EnableTelevisionTunesProvider !== false;
+                        document.getElementById("plexProviderPriority").value = config.PlexProviderPriority || 1;
+                        document.getElementById("televisionTunesProviderPriority").value = config.TelevisionTunesProviderPriority || 2;
+
                         Dashboard.hideLoadingMsg();
                     });
                 },
                 saveConfiguration: function () {
                     Dashboard.showLoadingMsg();
+
+                    // Get audio settings
                     var normalizeAudio = document.getElementById("normalizeAudio").checked;
                     var normalizeAudioVolume = document.getElementById("normalizeAudioVolume").value;
 
+                    // Get provider settings
+                    var enablePlexProvider = document.getElementById("enablePlexProvider").checked;
+                    var enableTelevisionTunesProvider = document.getElementById("enableTelevisionTunesProvider").checked;
+                    var plexProviderPriority = parseInt(document.getElementById("plexProviderPriority").value);
+                    var televisionTunesProviderPriority = parseInt(document.getElementById("televisionTunesProviderPriority").value);
+
                     ApiClient.getPluginConfiguration(ThemeSongPluginConfiguration.uniquePluginId).then(function (config) {
+                        // Update audio settings
                         config.NormalizeAudio = normalizeAudio;
                         config.NormalizeAudioVolume = normalizeAudioVolume;
+
+                        // Update provider settings
+                        config.EnablePlexProvider = enablePlexProvider;
+                        config.EnableTelevisionTunesProvider = enableTelevisionTunesProvider;
+                        config.PlexProviderPriority = plexProviderPriority;
+                        config.TelevisionTunesProviderPriority = televisionTunesProviderPriority;
+
                         ApiClient.updatePluginConfiguration(ThemeSongPluginConfiguration.uniquePluginId, config).then(function (result) {
                             Dashboard.processPluginConfigurationUpdateResult(result);
                         });
                     });
-                    
                 }
             }
 
