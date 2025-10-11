@@ -8,6 +8,14 @@
     "category": "Metadata",
     "versions": [
       {
+        "version": "10.10.0.2",
+        "changelog": "See release notes",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/TOomaAh/jellyfin-plugin-themesongs/releases/download/v10.10.0.2/jellyfin-plugin-themesongs-v10.10.0.2.zip",
+        "checksum": "44b604eb97592af4a3c1b007a55ed5f7",
+        "timestamp": "2025-10-11T22:23:42Z"
+      },
+      {
         "version": "10.10.0.1",
         "changelog": "See release notes",
         "targetAbi": "10.10.0.0",
