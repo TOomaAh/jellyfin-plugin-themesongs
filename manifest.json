@@ -6,6 +6,15 @@
     "overview": "Downloads theme songs from Plex and TelevisionTunes providers with configurable priorities and audio normalization",
     "owner": "TOomaAh",
     "category": "Metadata",
-    "versions": []
+    "versions": [
+      {
+        "version": "10.10.0.1",
+        "changelog": "See release notes",
+        "targetAbi": "10.10.0.0",
+        "sourceUrl": "https://github.com/TOomaAh/jellyfin-plugin-themesongs/releases/download/v10.10.0.1/jellyfin-plugin-themesongs-v10.10.0.1.zip",
+        "checksum": "f92db36e26d8f44fe8cda9920b546e1b",
+        "timestamp": "2025-10-11T22:07:25Z"
+      }
+    ]
   }
 ]
