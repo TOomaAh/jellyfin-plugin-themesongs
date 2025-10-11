@@ -11,11 +11,65 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
     public class AudioNormalizationService : IAudioNormalizationService
     {
         private readonly ILogger<AudioNormalizationService> _logger;
-        private const string FfmpegExecutable = "ffmpeg";
+        private bool? _ffmpegAvailable;
+        private string _lastCheckedPath;
 
         public AudioNormalizationService(ILogger<AudioNormalizationService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        private string GetFfmpegPath()
+        {
+            var config = Plugin.Instance?.Configuration;
+            return !string.IsNullOrWhiteSpace(config?.FfmpegPath) ? config.FfmpegPath : "ffmpeg";
+        }
+
+        private async Task<bool> IsFfmpegAvailableAsync()
+        {
+            string currentPath = GetFfmpegPath();
+
+            // Re-check if the path has changed
+            if (_ffmpegAvailable.HasValue && _lastCheckedPath == currentPath)
+            {
+                return _ffmpegAvailable.Value;
+            }
+
+            _lastCheckedPath = currentPath;
+
+            try
+            {
+                var processInfo = new ProcessStartInfo
+                {
+                    FileName = currentPath,
+                    Arguments = "-version",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+
+                using var process = new Process { StartInfo = processInfo };
+                process.Start();
+                await process.WaitForExitAsync();
+
+                _ffmpegAvailable = process.ExitCode == 0;
+                if (!_ffmpegAvailable.Value)
+                {
+                    _logger.LogWarning("FFmpeg at path '{FfmpegPath}' is not available. Audio normalization will be disabled.", currentPath);
+                }
+                else
+                {
+                    _logger.LogInformation("FFmpeg found at '{FfmpegPath}'", currentPath);
+                }
+                return _ffmpegAvailable.Value;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "FFmpeg at path '{FfmpegPath}' is not available. Audio normalization will be disabled.", currentPath);
+                _ffmpegAvailable = false;
+                return false;
+            }
         }
 
         public async Task<string> NormalizeAudioAsync(string inputFilePath)
@@ -33,6 +87,13 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
                 if (config?.NormalizeAudio != true)
                 {
                     _logger.LogDebug("Audio normalization is disabled in configuration");
+                    return inputFilePath;
+                }
+
+                // Check if FFmpeg is available
+                if (!await IsFfmpegAvailableAsync())
+                {
+                    _logger.LogWarning("Audio normalization is enabled but FFmpeg is not available. Skipping normalization for {FilePath}", inputFilePath);
                     return inputFilePath;
                 }
 
@@ -65,6 +126,12 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
                     return false;
                 }
 
+                // Check if FFmpeg is available
+                if (!await IsFfmpegAvailableAsync())
+                {
+                    return false;
+                }
+
                 string targetVolume = $"{config.NormalizeAudioVolume}dB";
                 string currentVolume = await DetectVolumeAsync(filePath);
 
@@ -81,7 +148,7 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
         {
             var processInfo = new ProcessStartInfo
             {
-                FileName = FfmpegExecutable,
+                FileName = GetFfmpegPath(),
                 Arguments = $"-i \"{filePath}\" -af \"volumedetect\" -f null -",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
@@ -120,7 +187,7 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
 
             var processInfo = new ProcessStartInfo
             {
-                FileName = FfmpegExecutable,
+                FileName = GetFfmpegPath(),
                 Arguments = arguments,
                 UseShellExecute = false,
                 RedirectStandardOutput = true,

@@ -6,6 +6,7 @@ namespace Jellyfin.Plugin.ThemeSongs.Configuration
     {
         public bool NormalizeAudio { get; set; } = true;
         public int NormalizeAudioVolume { get; set; } = -15;
+        public string FfmpegPath { get; set; } = "ffmpeg";
 
         // Provider configuration
         public bool EnablePlexProvider { get; set; } = true;

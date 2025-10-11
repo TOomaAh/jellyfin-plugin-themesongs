@@ -31,6 +31,12 @@
                             Normalize Audio Volume (dB)
                         </div>
                     </label>
+                    <label class="inputContainer">
+                        <input is="emby-input" type="text" id="ffmpegPath" />
+                        <div class="fieldDescription">
+                            FFmpeg Path (leave as 'ffmpeg' to use system PATH, or specify full path like '/usr/bin/ffmpeg')
+                        </div>
+                    </label>
 
                     <div class="sectionTitleContainer">
                         <h2 class="sectionTitle">Theme Song Providers</h2>
@@ -86,6 +92,7 @@
                         // Audio settings
                         document.getElementById("normalizeAudio").checked = config.NormalizeAudio || false;
                         document.getElementById("normalizeAudioVolume").value = config.NormalizeAudioVolume || -15;
+                        document.getElementById("ffmpegPath").value = config.FfmpegPath || "ffmpeg";
 
                         // Provider settings
                         document.getElementById("enablePlexProvider").checked = config.EnablePlexProvider !== false;
@@ -102,6 +109,7 @@
                     // Get audio settings
                     var normalizeAudio = document.getElementById("normalizeAudio").checked;
                     var normalizeAudioVolume = document.getElementById("normalizeAudioVolume").value;
+                    var ffmpegPath = document.getElementById("ffmpegPath").value;
 
                     // Get provider settings
                     var enablePlexProvider = document.getElementById("enablePlexProvider").checked;
@@ -113,6 +121,7 @@
                         // Update audio settings
                         config.NormalizeAudio = normalizeAudio;
                         config.NormalizeAudioVolume = normalizeAudioVolume;
+                        config.FfmpegPath = ffmpegPath;
 
                         // Update provider settings
                         config.EnablePlexProvider = enablePlexProvider;
