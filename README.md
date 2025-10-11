@@ -2,20 +2,11 @@
 <h3 align="center">Part of the <a href="https://jellyfin.org">Jellyfin Project</a></h3>
 
 <p align="center">
-  <a href="https://github.com/your-username/jellyfin-plugin-themesongs/actions/workflows/ci.yml">
-    <img src="https://github.com/your-username/jellyfin-plugin-themesongs/workflows/Build%20Plugin/badge.svg" alt="Build Status">
+  <a href="https://github.com/TOomaAh/jellyfin-plugin-themesongs/actions/workflows/ci.yml">
+    <img src="https://github.com/TOomaAh/jellyfin-plugin-themesongs/workflows/Build%20%26%20Test/badge.svg" alt="Build Status">
   </a>
-  <a href="https://github.com/your-username/jellyfin-plugin-themesongs/actions/workflows/tests.yml">
-    <img src="https://github.com/your-username/jellyfin-plugin-themesongs/workflows/Tests%20%26%20Quality/badge.svg" alt="Tests">
-  </a>
-  <a href="https://codecov.io/gh/your-username/jellyfin-plugin-themesongs">
-    <img src="https://codecov.io/gh/your-username/jellyfin-plugin-themesongs/branch/master/graph/badge.svg" alt="Coverage">
-  </a>
-  <a href="https://github.com/your-username/jellyfin-plugin-themesongs/releases">
-    <img src="https://img.shields.io/github/v/release/your-username/jellyfin-plugin-themesongs" alt="Release">
-  </a>
-  <a href="https://github.com/your-username/jellyfin-plugin-themesongs/blob/master/LICENSE">
-    <img src="https://img.shields.io/github/license/your-username/jellyfin-plugin-themesongs" alt="License">
+  <a href="https://github.com/TOomaAh/jellyfin-plugin-themesongs/releases">
+    <img src="https://img.shields.io/github/v/release/TOomaAh/jellyfin-plugin-themesongs" alt="Release">
   </a>
 </p>
 
@@ -41,21 +32,24 @@ Jellyfin Theme Songs plugin automatically downloads theme songs for your TV show
 
 ## 🚀 Installation
 
-### From GitHub Releases (Recommended)
-1. Download the latest `jellyfin-plugin-themesongs-x.x.x.zip` from [Releases](https://github.com/your-username/jellyfin-plugin-themesongs/releases)
-2. Extract the ZIP file
-3. Copy the contents to your Jellyfin plugins directory:
+### From Plugin Repository (Recommended)
+1. In Jellyfin, go to **Dashboard → Plugins → Repositories**
+2. Click **Add** and enter:
+   ```
+   https://raw.githubusercontent.com/TOomaAh/jellyfin-plugin-themesongs/master/manifest.json
+   ```
+3. Go to **Catalog** and search for "Theme Songs"
+4. Click **Install** and restart Jellyfin
+5. Configure the plugin in **Dashboard → Plugins → Theme Songs**
+
+### From GitHub Releases (Manual)
+1. Download the latest `jellyfin-plugin-themesongs-vX.X.X.zip` from [Releases](https://github.com/TOomaAh/jellyfin-plugin-themesongs/releases)
+2. Extract the ZIP file to your Jellyfin plugins directory:
    - **Windows**: `%ProgramData%\Jellyfin\Server\plugins\Theme Songs\`
    - **Linux**: `/var/lib/jellyfin/plugins/Theme Songs/`
    - **Docker**: `/config/plugins/Theme Songs/`
-4. Restart Jellyfin
-5. Configure the plugin in Dashboard → Plugins → Theme Songs
-
-### From Repository
-1. In Jellyfin, go to Dashboard → Plugins → Repositories
-2. Add repository: `https://raw.githubusercontent.com/your-username/jellyfin-plugin-themesongs/master/manifest.json`
-3. Go to Catalog and search for "Theme Songs"
-4. Install and restart Jellyfin
+3. Restart Jellyfin
+4. Configure the plugin in **Dashboard → Plugins → Theme Songs**
 
 ## ⚙️ Configuration
 
@@ -85,13 +79,28 @@ Jellyfin Theme Songs plugin automatically downloads theme songs for your TV show
 
 
 
-## Build Process
-1. Clone or download this repository
-2. Ensure you have .NET Core SDK setup and installed
-3. Build plugin with following command.
+## 🔧 Development
+
+### Build from Source
 ```sh
+# Clone the repository
+git clone https://github.com/TOomaAh/jellyfin-plugin-themesongs.git
+cd jellyfin-plugin-themesongs
+
+# Restore dependencies
+dotnet restore
+
+# Build
+dotnet build --configuration Release
+
+# Create release package
 dotnet publish --configuration Release --output bin
 ```
-4. Place the resulting .dll file in a folder called ```plugins/Merge versions``` under  the program data directory or inside the portable install directory
+
+### Installation from Build
+Place the resulting `Jellyfin.Plugin.ThemeSongs.dll` file in:
+- **Windows**: `%ProgramData%\Jellyfin\Server\plugins\Theme Songs\`
+- **Linux**: `/var/lib/jellyfin/plugins/Theme Songs/`
+- **Docker**: `/config/plugins/Theme Songs/`
 
 

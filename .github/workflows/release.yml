@@ -39,7 +39,70 @@ jobs:
     - name: Create archive
       run: zip -j "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" Jellyfin.Plugin.ThemeSongs/bin/Release/net8.0/Jellyfin.Plugin.ThemeSongs.dll
 
+    - name: Calculate checksum
+      id: checksum
+      run: |
+        CHECKSUM=$(md5sum "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" | cut -d ' ' -f 1)
+        echo "CHECKSUM=${CHECKSUM}"
+        echo "CHECKSUM=${CHECKSUM}" >> $GITHUB_ENV
+
+    - name: Check if tag exists
+      id: check_tag
+      run: |
+        if git rev-parse "v${{ env.VERSION }}" >/dev/null 2>&1; then
+          echo "TAG_EXISTS=true" >> $GITHUB_ENV
+        else
+          echo "TAG_EXISTS=false" >> $GITHUB_ENV
+        fi
+
     - name: Create release with tag
-      run: gh release create "v${{ env.VERSION }}" "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" --title "v${{ env.VERSION }}" --generate-notes
+      run: |
+        if [ "${{ env.TAG_EXISTS }}" = "true" ]; then
+          # Tag exists, just create release
+          gh release create "v${{ env.VERSION }}" "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" --title "v${{ env.VERSION }}" --generate-notes
+        else
+          # Tag doesn't exist, create tag first
+          git tag "v${{ env.VERSION }}"
+          git push origin "v${{ env.VERSION }}"
+          gh release create "v${{ env.VERSION }}" "jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip" --title "v${{ env.VERSION }}" --generate-notes
+        fi
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update manifest
+      run: |
+        REPO_URL="https://github.com/${{ github.repository }}"
+        DOWNLOAD_URL="${REPO_URL}/releases/download/v${{ env.VERSION }}/jellyfin-plugin-themesongs-v${{ env.VERSION }}.zip"
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+        # Read current manifest and add new version at the beginning
+        python3 << EOF
+        import json
+        import sys
+
+        with open('manifest.json', 'r') as f:
+            manifest = json.load(f)
+
+        new_version = {
+            "version": "${{ env.VERSION }}",
+            "changelog": "See release notes",
+            "targetAbi": "10.10.0.0",
+            "sourceUrl": "${DOWNLOAD_URL}",
+            "checksum": "${{ env.CHECKSUM }}",
+            "timestamp": "${TIMESTAMP}"
+        }
+
+        # Insert at beginning of versions array
+        manifest[0]['versions'].insert(0, new_version)
+
+        with open('manifest.json', 'w') as f:
+            json.dump(manifest, f, indent=2)
+        EOF
+
+    - name: Commit manifest changes
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add manifest.json
+        git commit -m "Update manifest for v${{ env.VERSION }}" || echo "No changes to commit"
+        git push

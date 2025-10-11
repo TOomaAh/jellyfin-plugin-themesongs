@@ -1,0 +1,11 @@
+[
+  {
+    "guid": "afe1de9c-63e4-4692-8d8c-7c964df19eb2",
+    "name": "Theme Songs",
+    "description": "Automatically downloads theme songs for TV series from various providers",
+    "overview": "Downloads theme songs from Plex and TelevisionTunes providers with configurable priorities and audio normalization",
+    "owner": "TOomaAh",
+    "category": "Metadata",
+    "versions": []
+  }
+]
