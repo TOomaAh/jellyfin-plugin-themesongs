@@ -7,9 +7,19 @@
 
 <body>
     <div id="themeSongConfigurationPage" data-role="page" class="page type-interior pluginConfigurationPage tbsConfigurationPage"
-        data-require="emby-input,emby-button">
+        data-require="emby-input,emby-button,emby-tabs,emby-button">
         <div data-role="content">
             <div class="content-primary">
+                <div is="emby-tabs" class="tabs-viewmenubar">
+                    <button is="emby-button" class="emby-tab-button emby-tab-button-active" data-index="0">
+                        <div>Configuration</div>
+                    </button>
+                    <button is="emby-button" class="emby-tab-button" data-index="1">
+                        <div>Manage Theme Songs</div>
+                    </button>
+                </div>
+
+                <div class="tabContent" data-index="0">
                 <form class="tbsConfigurationPage">
                     <div class="verticalSection">
                         <p>This plugin relies on the TVDB provider
@@ -78,11 +88,91 @@
                         onclick=download()><span>Download Theme Songs</span>
                     </button>
                 </form>
+                </div>
+
+                <div class="tabContent" data-index="1" style="display: none;">
+                <div class="sectionTitleContainer">
+                    <h2 class="sectionTitle">Manage Theme Songs</h2>
+                </div>
+                <div class="fieldDescription">
+                    Upload or listen to custom theme songs for your TV series.
+                </div>
+                <br />
+
+                <div class="selectContainer">
+                    <select is="emby-select" id="seriesSelect" label="Select Series">
+                        <option value="">Loading series...</option>
+                    </select>
+                </div>
+                <br />
+
+                <div id="themeControls" style="display: none;">
+                    <div id="audioPlayerContainer" style="display: none; margin-bottom: 20px;">
+                        <h3>Current Theme Song</h3>
+                        <audio id="themeAudioPlayer" controls style="width: 100%; max-width: 600px;">
+                            Your browser does not support the audio element.
+                        </audio>
+                        <br />
+                        <button is="emby-button" type="button" class="raised button-alt" id="deleteThemeButton">
+                            <span>Delete Theme Song</span>
+                        </button>
+                    </div>
+
+                    <div id="noThemeMessage" style="display: none; margin-bottom: 20px;">
+                        <p style="color: #888;">No theme song found for this series.</p>
+                    </div>
+
+                    <h3>Upload New Theme Song</h3>
+                    <form id="uploadForm">
+                        <div class="inputContainer">
+                            <input type="file" id="themeFileInput" accept="audio/mpeg,audio/mp3,.mp3" />
+                            <div class="fieldDescription">
+                                Select an MP3 file to upload as the theme song
+                            </div>
+                        </div>
+                        <br />
+                        <button is="emby-button" type="submit" class="raised button-submit">
+                            <span>Upload Theme Song</span>
+                        </button>
+                    </form>
+                </div>
+                </div>
             </div>
         </div>
 
 
         <script type="text/javascript">
+
+            // Tab management
+            function setupTabs() {
+                var tabButtons = document.querySelectorAll('.emby-tab-button');
+                var tabContents = document.querySelectorAll('.tabContent');
+
+                tabButtons.forEach(function (button) {
+                    button.addEventListener('click', function () {
+                        var index = this.getAttribute('data-index');
+
+                        // Update button states
+                        tabButtons.forEach(function (btn) {
+                            btn.classList.remove('emby-tab-button-active');
+                        });
+                        this.classList.add('emby-tab-button-active');
+
+                        // Update content visibility
+                        tabContents.forEach(function (content) {
+                            if (content.getAttribute('data-index') === index) {
+                                content.style.display = 'block';
+                                // Load series when switching to manage tab
+                                if (index === '1') {
+                                    loadSeries();
+                                }
+                            } else {
+                                content.style.display = 'none';
+                            }
+                        });
+                    });
+                });
+            }
 
             var ThemeSongPluginConfiguration = {
                 uniquePluginId: "afe1de9c-63e4-4692-8d8c-7c964df19eb2",
@@ -159,7 +249,165 @@
                     });
                 });
             }
-           
+
+            // Load all TV series
+            function loadSeries() {
+                console.log('Loading series...');
+                var select = document.getElementById('seriesSelect');
+
+                if (!select) {
+                    console.error('Series select element not found');
+                    return;
+                }
+
+                select.innerHTML = '<option value="">Loading series...</option>';
+
+                var url = ApiClient.getUrl('/ThemeSongs/Series');
+                console.log('Fetching from URL:', url);
+
+                fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'X-Emby-Authorization': ApiClient._authorizationHeader,
+                        'Content-Type': 'application/json'
+                    }
+                }).then(function (response) {
+                    console.log('Response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error('HTTP error ' + response.status);
+                    }
+                    return response.json();
+                }).then(function (series) {
+                    console.log('Loaded series:', series);
+                    select.innerHTML = '<option value="">-- Select a series --</option>';
+
+                    if (series && series.length > 0) {
+                        series.forEach(function (s) {
+                            var option = document.createElement('option');
+                            option.value = s.Id;
+                            option.textContent = s.Name;
+                            select.appendChild(option);
+                        });
+                    } else {
+                        select.innerHTML = '<option value="">No series found</option>';
+                    }
+                }).catch(function (error) {
+                    console.error('Error loading series:', error);
+                    select.innerHTML = '<option value="">Error loading series</option>';
+                    Dashboard.alert('Failed to load series list: ' + error.message);
+                });
+            }
+
+            // Check if theme song exists for selected series
+            function checkThemeSong(seriesId) {
+                if (!seriesId) {
+                    document.getElementById('themeControls').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('themeControls').style.display = 'block';
+
+                ApiClient.fetch({
+                    url: ApiClient.getUrl('/ThemeSongs/Series/' + seriesId + '/Theme'),
+                    type: 'GET'
+                }).then(function (response) {
+                    // Theme song exists
+                    document.getElementById('audioPlayerContainer').style.display = 'block';
+                    document.getElementById('noThemeMessage').style.display = 'none';
+
+                    var audioPlayer = document.getElementById('themeAudioPlayer');
+                    audioPlayer.src = ApiClient.getUrl('/ThemeSongs/Series/' + seriesId + '/Theme') + '?timestamp=' + new Date().getTime();
+                }).catch(function (error) {
+                    // No theme song found
+                    document.getElementById('audioPlayerContainer').style.display = 'none';
+                    document.getElementById('noThemeMessage').style.display = 'block';
+                });
+            }
+
+            // Upload theme song
+            document.getElementById('uploadForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var seriesId = document.getElementById('seriesSelect').value;
+                if (!seriesId) {
+                    Dashboard.alert('Please select a series');
+                    return;
+                }
+
+                var fileInput = document.getElementById('themeFileInput');
+                if (!fileInput.files || fileInput.files.length === 0) {
+                    Dashboard.alert('Please select a file');
+                    return;
+                }
+
+                var formData = new FormData();
+                formData.append('file', fileInput.files[0]);
+
+                Dashboard.showLoadingMsg();
+
+                fetch(ApiClient.getUrl('/ThemeSongs/Series/' + seriesId + '/Theme'), {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Emby-Authorization': ApiClient._authorizationHeader
+                    }
+                }).then(function (response) {
+                    Dashboard.hideLoadingMsg();
+                    if (response.ok) {
+                        Dashboard.alert('Theme song uploaded successfully!');
+                        fileInput.value = '';
+                        checkThemeSong(seriesId);
+                    } else {
+                        return response.text().then(function (text) {
+                            Dashboard.alert('Upload failed: ' + text);
+                        });
+                    }
+                }).catch(function (error) {
+                    Dashboard.hideLoadingMsg();
+                    console.error('Upload error:', error);
+                    Dashboard.alert('Upload failed: ' + error.message);
+                });
+            });
+
+            // Delete theme song
+            document.getElementById('deleteThemeButton').addEventListener('click', function () {
+                var seriesId = document.getElementById('seriesSelect').value;
+                if (!seriesId) {
+                    return;
+                }
+
+                if (!confirm('Are you sure you want to delete this theme song?')) {
+                    return;
+                }
+
+                Dashboard.showLoadingMsg();
+
+                ApiClient.fetch({
+                    url: ApiClient.getUrl('/ThemeSongs/Series/' + seriesId + '/Theme'),
+                    type: 'DELETE'
+                }).then(function () {
+                    Dashboard.hideLoadingMsg();
+                    Dashboard.alert('Theme song deleted successfully');
+                    checkThemeSong(seriesId);
+                }).catch(function (error) {
+                    Dashboard.hideLoadingMsg();
+                    console.error('Delete error:', error);
+                    Dashboard.alert('Failed to delete theme song');
+                });
+            });
+
+            // Series selection change
+            document.getElementById('seriesSelect').addEventListener('change', function () {
+                var seriesId = this.value;
+                checkThemeSong(seriesId);
+            });
+
+            // Initialize page
+            document.getElementById('themeSongConfigurationPage').addEventListener('pageshow', function () {
+                console.log('Page shown');
+                setupTabs();
+            });
+
         </script>
     </div>
 </body>
