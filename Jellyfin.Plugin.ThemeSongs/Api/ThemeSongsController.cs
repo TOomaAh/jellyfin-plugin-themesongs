@@ -144,27 +144,31 @@ namespace Jellyfin.Plugin.ThemeSongs.Api
         {
             _logger.LogInformation("Getting theme song for series {SeriesId}", seriesId);
 
-            var series = _libraryManager.GetItemList(new InternalItemsQuery
+            if (!System.Guid.TryParse(seriesId, out var seriesGuid))
             {
-                IncludeItemTypes = [Jellyfin.Data.Enums.BaseItemKind.Series],
-            })
-            .OfType<Series>()
-            .FirstOrDefault(s => s.Id.ToString() == seriesId);
+                return BadRequest("Invalid series ID format");
+            }
 
-            if (series == null)
+            _logger.LogDebug("Parsed series ID: {SeriesGuid}", seriesGuid);
+            var item = _libraryManager.GetItemById(seriesGuid);
+            if (item == null || item is not Series series)
             {
                 return NotFound("Series not found");
             }
+
+            _logger.LogInformation("Found series: {SeriesName}", series.Name);
 
             var themeSongPath = Path.Combine(series.Path, "theme.mp3");
 
             if (!System.IO.File.Exists(themeSongPath))
             {
+                _logger.LogDebug("Theme song file not found at path: {ThemeSongPath}", themeSongPath);
                 return NotFound("Theme song not found");
             }
 
-            var fileStream = System.IO.File.OpenRead(themeSongPath);
-            return File(fileStream, "audio/mpeg", "theme.mp3");
+            _logger.LogDebug("Serving theme song file from path: {ThemeSongPath}", themeSongPath);
+
+            return PhysicalFile(themeSongPath, "audio/mpeg", "theme.mp3", enableRangeProcessing: true);
         }
 
         /// <summary>
@@ -197,14 +201,13 @@ namespace Jellyfin.Plugin.ThemeSongs.Api
                 return BadRequest("File must be an MP3 audio file");
             }
 
-            var series = _libraryManager.GetItemList(new InternalItemsQuery
+            if (!System.Guid.TryParse(seriesId, out var seriesGuid))
             {
-                IncludeItemTypes = [Data.Enums.BaseItemKind.Series],
-            })
-            .OfType<Series>()
-            .FirstOrDefault(s => s.Id.ToString() == seriesId);
+                return BadRequest("Invalid series ID format");
+            }
 
-            if (series == null)
+            var item = _libraryManager.GetItemById(seriesGuid);
+            if (item == null || item is not Series series)
             {
                 return NotFound("Series not found");
             }
@@ -251,14 +254,13 @@ namespace Jellyfin.Plugin.ThemeSongs.Api
         {
             _logger.LogInformation("Deleting theme song for series {SeriesId}", seriesId);
 
-            var series = _libraryManager.GetItemList(new InternalItemsQuery
+            if (!System.Guid.TryParse(seriesId, out var seriesGuid))
             {
-                IncludeItemTypes = [Data.Enums.BaseItemKind.Series],
-            })
-            .OfType<Series>()
-            .FirstOrDefault(s => s.Id.ToString() == seriesId);
+                return BadRequest("Invalid series ID format");
+            }
 
-            if (series == null)
+            var item = _libraryManager.GetItemById(seriesGuid);
+            if (item == null || item is not Series series)
             {
                 return NotFound("Series not found");
             }
