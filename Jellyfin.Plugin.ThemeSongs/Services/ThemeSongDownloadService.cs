@@ -281,11 +281,12 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
         {
             return _libraryManager.GetItemList(new InternalItemsQuery
             {
-                IncludeItemTypes = new[] { BaseItemKind.Series },
+                IncludeItemTypes = [BaseItemKind.Series],
                 IsVirtualItem = false,
                 Recursive = true,
-                HasTvdbId = true
-            }).Cast<Series>();
+                HasTvdbId = true,
+                HasThemeSong = false,
+            }).OfType<Series>();
         }
     }
 }

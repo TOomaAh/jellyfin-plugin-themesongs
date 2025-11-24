@@ -9,7 +9,7 @@ using MediaBrowser.Model.Serialization;
 
 namespace Jellyfin.Plugin.ThemeSongs
 {
-    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages 
+    public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     {
         public Plugin(IServerApplicationPaths appPaths, IXmlSerializer xmlSerializer)
             : base(appPaths, xmlSerializer)
@@ -29,14 +29,14 @@ namespace Jellyfin.Plugin.ThemeSongs
 
         public IEnumerable<PluginPageInfo> GetPages()
         {
-            return new[]
-            {
+            return
+            [
                 new PluginPageInfo
                 {
                     Name = "Theme Songs",
                     EmbeddedResourcePath = GetType().Namespace + ".Configuration.configurationpage.html"
                 }
-            };
+            ];
         }
     }
 }
