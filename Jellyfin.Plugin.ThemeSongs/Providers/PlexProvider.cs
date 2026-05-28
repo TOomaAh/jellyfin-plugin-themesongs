@@ -12,7 +12,7 @@ namespace Jellyfin.Plugin.ThemeSongs.Providers
     {
         private readonly IHttpClientService _httpClientService;
         private readonly ILogger<PlexProvider> _logger;
-        private const string BaseUrl = "http://tvthemes.plexapp.com";
+        private const string BaseUrl = "https://tvthemes.plexapp.com";
 
         public PlexProvider(IHttpClientService httpClientService, ILogger<PlexProvider> logger)
         {
