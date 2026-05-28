@@ -1,4 +1,5 @@
 using Jellyfin.Plugin.ThemeSongs.Providers;
+using Jellyfin.Plugin.ThemeSongs.ScheduledTasks;
 using Jellyfin.Plugin.ThemeSongs.Services;
 using MediaBrowser.Controller;
 using MediaBrowser.Controller.Plugins;
@@ -45,6 +46,9 @@ namespace Jellyfin.Plugin.ThemeSongs
 
             // Register legacy manager
             serviceCollection.AddSingleton<ThemeSongsManager>();
+
+            // Register scheduled task
+            serviceCollection.AddTransient<DownloadThemeSongsTask>();
         }
     }
 }

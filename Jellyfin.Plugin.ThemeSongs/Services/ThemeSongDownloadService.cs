@@ -279,14 +279,15 @@ namespace Jellyfin.Plugin.ThemeSongs.Services
 
         private IEnumerable<Series> GetSeriesFromLibrary()
         {
+
             return _libraryManager.GetItemList(new InternalItemsQuery
             {
                 IncludeItemTypes = [BaseItemKind.Series],
                 IsVirtualItem = false,
                 Recursive = true,
                 HasTvdbId = true,
-                HasThemeSong = false,
-            }).OfType<Series>();
+            }).OfType<Series>()
+			.ToList();
         }
     }
 }

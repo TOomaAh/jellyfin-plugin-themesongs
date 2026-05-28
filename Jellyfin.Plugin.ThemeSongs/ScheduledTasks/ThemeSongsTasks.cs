@@ -55,7 +55,7 @@ namespace Jellyfin.Plugin.ThemeSongs.ScheduledTasks
         }
 
         public string Name => "Download TV Theme Songs";
-        public string Key => "DownloadTV ThemeSongs";
+        public string Key => "DownloadTVThemeSongs";
         public string Description => "Scans all libraries to download TV Theme Songs";
         public string Category => "Theme Songs";
     }
